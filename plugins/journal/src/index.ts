@@ -8,7 +8,7 @@ import type {} from '@godcreator/gwb-shell'
 import { journalCommands, type JournalClock } from './node/commands.js'
 import { createHolidayBook, HOLIDAY_DOC, type FetchText } from './node/holidays.js'
 import { createJournalStore } from './node/store.js'
-import { DAY_PANE, JOURNAL_PANE, QUICK_CAPTURE_ID, TAGS_PANE } from './shared/types.js'
+import { DAY_PANE, JOURNAL_PANE, QUICK_CAPTURE_ID } from './shared/types.js'
 
 export const name = 'gwb-journal'
 
@@ -52,7 +52,6 @@ export function apply(ctx: GwbContext, options: JournalOptions = {}): void {
   ctx.inject(['gwbShell'], (scoped) => {
     scoped.gwbShell.registerPane({ id: JOURNAL_PANE, title: '日志', icon: 'calendar-days', kind: 'tool', client: CLIENT, style: STYLE })
     scoped.gwbShell.registerPane({ id: DAY_PANE, title: '当天', icon: 'calendar', kind: 'document', client: CLIENT, style: STYLE })
-    scoped.gwbShell.registerPane({ id: TAGS_PANE, title: '标签', icon: 'tags', kind: 'tool', client: CLIENT, style: STYLE })
     scoped.gwbShell.registerStatusItem({ id: QUICK_CAPTURE_ID, title: '快速记录', icon: 'pen-line', client: CLIENT, style: STYLE })
     scoped.gwbShell.describeSelf({ title: '日志', icon: 'calendar-days' })
   })

@@ -89,5 +89,4 @@ export const TOGGLE_COMMAND = 'journal.toggle'
 /** 窗格与状态栏的 id：node 端登记、浏览器端开窗格用的是同一个 */
 export const JOURNAL_PANE = 'journal'
 export const DAY_PANE = 'day'
-export const TAGS_PANE = 'tags'
 export const QUICK_CAPTURE_ID = 'quick-capture'

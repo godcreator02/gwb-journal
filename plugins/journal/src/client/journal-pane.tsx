@@ -20,6 +20,7 @@ import { formatDay, formatMonth, isoOf, monthGrid, monthOf, shiftMonth, weekdayO
 import { DAY_PANE } from '../shared/types.js'
 import { CALENDAR_COMMAND, CAPTURE_COMMAND, TODOS_COMMAND, TOGGLE_COMMAND, type CalendarDay, type CalendarResult, type HolidayYearStatus, type TodoRow } from '../shared/types.js'
 import { callData, errorText } from './calls.js'
+import { TagsSection } from './tags-section.js'
 
 const WEEK_HEADS = ['一', '二', '三', '四', '五', '六', '日'] as const
 const MONTH_INDEXES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] as const
@@ -81,6 +82,7 @@ function JournalPane({ host, shell }: { host: HostBridge; shell: ShellBridge }):
   const [draft, setDraft] = useState('')
   const [showDone, setShowDone] = useState(false)
   const showDoneId = 'journal-show-done'
+  const [tab, setTab] = useState<'todos' | 'tags'>('todos')
   const [inputError, setInputError] = useState<string | null>(null)
   const [monthPickerOpen, setMonthPickerOpen] = useState(false)
   const [pickerYear, setPickerYear] = useState(0)
@@ -319,19 +321,44 @@ function JournalPane({ host, shell }: { host: HostBridge; shell: ShellBridge }):
         </div>
         <div className="journal:grid journal:grid-cols-7">{grid.flat().map((date) => cell(date))}</div>
       </section>
-      <section aria-label="全部待办" className="journal:min-w-0 journal:flex-1">
-        <div className="journal:flex journal:items-center journal:gap-2 journal:py-2">
-          <h2 className="journal:m-0 journal:text-sm journal:font-medium">全部待办</h2>
-          <Badge variant="secondary">{String(remaining)}</Badge>
-          <div className="journal:ml-auto journal:flex journal:items-center journal:gap-2">
-            <Checkbox id={showDoneId} aria-label="显示已完成" checked={showDone} onCheckedChange={(value) => setShowDone(value === true)} />
-            <label htmlFor={showDoneId} className="journal:text-xs journal:text-muted-foreground">
-              显示已完成
-            </label>
-          </div>
+      <section aria-label="待办与标签" className="journal:min-w-0 journal:flex-1">
+        <div className="journal:mb-1 journal:flex journal:gap-1 journal:rounded-lg journal:bg-muted journal:p-0.5">
+          <button
+            type="button"
+            aria-pressed={tab === 'todos'}
+            title="全部待办"
+            onClick={() => setTab('todos')}
+            className={`journal:flex journal:flex-1 journal:items-center journal:justify-center journal:gap-1.5 journal:rounded-md journal:py-1 journal:text-xs ${tab === 'todos' ? 'journal:bg-background journal:font-medium journal:shadow-sm' : 'journal:text-muted-foreground journal:hover:text-foreground'}`}
+          >
+            待办
+            <Badge variant="secondary">{String(remaining)}</Badge>
+          </button>
+          <button
+            type="button"
+            aria-pressed={tab === 'tags'}
+            title="全部标签"
+            onClick={() => setTab('tags')}
+            className={`journal:flex journal:flex-1 journal:items-center journal:justify-center journal:gap-1.5 journal:rounded-md journal:py-1 journal:text-xs ${tab === 'tags' ? 'journal:bg-background journal:font-medium journal:shadow-sm' : 'journal:text-muted-foreground journal:hover:text-foreground'}`}
+          >
+            标签
+          </button>
         </div>
-        {visibleTodos.map((row) => todoLine(row))}
-        {todos !== null && visibleTodos.length === 0 ? <p className="journal:p-4 journal:text-sm journal:text-muted-foreground">{showDone ? '没有待办' : '没有未完成待办'}</p> : null}
+        {tab === 'todos' ? (
+          <>
+            <div className="journal:flex journal:items-center journal:gap-2 journal:py-0.5">
+              <div className="journal:ml-auto journal:flex journal:items-center journal:gap-2">
+                <Checkbox id={showDoneId} aria-label="显示已完成" checked={showDone} onCheckedChange={(value) => setShowDone(value === true)} />
+                <label htmlFor={showDoneId} className="journal:text-xs journal:text-muted-foreground">
+                  显示已完成
+                </label>
+              </div>
+            </div>
+            {visibleTodos.map((row) => todoLine(row))}
+            {todos !== null && visibleTodos.length === 0 ? <p className="journal:p-4 journal:text-sm journal:text-muted-foreground">{showDone ? '没有待办' : '没有未完成待办'}</p> : null}
+          </>
+        ) : (
+          <TagsSection host={host} shell={shell} />
+        )}
       </section>
       {notices.map((notice) => (
         <p key={notice} className="journal:m-0 journal:flex-none journal:text-xs journal:text-muted-foreground">
