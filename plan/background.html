@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>块笔记废弃 · 重建背景</title>
+<style>
+  :root {
+    --bg: #faf9f7; --fg: #1f2328; --muted: #5f6672; --line: #e4e1db;
+    --card: #ffffff; --accent: #1a5fb4; --accent-soft: #eaf1fa;
+    --warn-bg: #fdf3e3; --warn-line: #e9b949; --warn-fg: #7a5a12;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #17181b; --fg: #e6e4e0; --muted: #9aa0aa; --line: #2e3138;
+      --card: #1f2126; --accent: #7cb0f5; --accent-soft: #1d2a3c;
+      --warn-bg: #2f2513; --warn-line: #8a6d1d; --warn-fg: #e5c876;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font-family: "Sarasa Mono SC", "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif;
+    line-height: 1.75; font-size: 16px;
+  }
+  main { max-width: 48rem; margin: 0 auto; padding: 3rem 1.25rem 5rem; }
+  h1 { font-size: 1.9rem; line-height: 1.35; margin: 0 0 .4rem; }
+  h2 { font-size: 1.3rem; margin: 2.8rem 0 .8rem; padding-bottom: .35rem; border-bottom: 1px solid var(--line); }
+  h3 { font-size: 1.05rem; margin: 1.6rem 0 .5rem; }
+  .meta { color: var(--muted); font-size: .88rem; margin-bottom: 2rem; }
+  nav.top { margin: 0 0 2rem; font-size: .92rem; color: var(--muted); }
+  nav.top a { color: var(--accent); text-decoration: none; }
+  a { color: var(--accent); }
+  code { background: var(--accent-soft); padding: .1em .35em; border-radius: 4px; font-size: .9em; }
+  ul, ol { padding-left: 1.4rem; }
+  li { margin: .3rem 0; }
+  table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: .95rem; }
+  th, td { border: 1px solid var(--line); padding: .5rem .7rem; text-align: left; vertical-align: top; }
+  th { background: var(--card); }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 1rem 1.3rem; margin: 1rem 0; }
+  .card h3 { margin-top: .2rem; }
+  .todo-decide { background: var(--warn-bg); border: 1px solid var(--warn-line); border-radius: 10px; padding: 1rem 1.3rem; margin: 1rem 0; }
+  .todo-decide h3 { color: var(--warn-fg); margin-top: .1rem; }
+  .lead { font-size: 1.05rem; }
+  footer { margin-top: 4rem; color: var(--muted); font-size: .85rem; border-top: 1px solid var(--line); padding-top: 1rem; }
+</style>
+</head>
+<body>
+<main>
+  <nav class="top"><a href="../gwb-papers/plan/papers.html">论文线方案（papers 仓）</a> · <a href="journal.html">日志线方案</a> · 重建背景</nav>
+
+  <h1>块笔记废弃 · 论文库与日志重建背景</h1>
+  <p class="meta">2026-10-12 · gwb-apps 单元 · 状态：待两个决策点拍板（见文末）· 这份背景在 gwb-papers 与 gwb-journal 两仓的 plan/ 下各存一份相同内容，各自的方案页在旁边；不建文档站（文档站自身在重写）</p>
+
+  <p class="lead">整套块笔记（<code>gwb-block-note</code> 的核心与全部 bn-* 插件，以及 <code>gwb-paper-fetch</code> 里的论文库插件）标记废弃。论文库与日志各起一个全新插件、起全新名字、完全重写，不在旧代码上改。<strong>两条线并行推进，互不依赖。</strong></p>
+
+  <h2>一、为什么废弃</h2>
+  <ul>
+    <li><strong>平台里又造了一个平台。</strong>块笔记核心 <code>gwb-bn-core</code> 约 3.9 万行（316 个文件），自带存储、字段声明、提交与冲突、历史撤销、JS 查询引擎、正文渲染；而它服务的所有领域插件加起来（日志 4.4k + 标签 2.6k + 评论 1.2k + 论文库 14k 行）还不如核心大。地基比楼大。</li>
+    <li><strong>模型错配，而且代价是持续付的。</strong>日志本质是时间序列，论文本质是关系数据（作者—机构多对多、参考文献与被引是图上的边），都不长在「五字段块树」上。为了塞进树，日志的一天要用特殊顶级块 + 唯一日期字段 + <code>ifAbsent</code> 创建语义；论文的作者机构要做成独立块文件。说明书里大量篇幅是在教 agent 跟块模型周旋，而不是领域本身的事。</li>
+    <li><strong>通用性没有兑现。</strong>跨域引用、统一查询这些通用模型的卖点，实际工作流里几乎没用到；用到的引用都在论文域内部。</li>
+    <li><strong>抽象没消掉复杂度，只是把它搬进了规约。</strong>领域复杂度变成了每份说明书里的规程，靠 agent 读文档来执行，负担是复利式的。</li>
+  </ul>
+
+  <h2>二、重写的总则（两条线共同遵守）</h2>
+  <div class="card">
+    <h3>★ 要点：UI 设计照搬——废弃的是模型，不是界面</h3>
+    <p>日志与论文两个插件现有的界面设计是好的，直接搬到新插件：日志的月历窗格、正文窗格、全库待办、状态栏快速记录；论文的列表筛选排序、题录卡、引用页与下一批推荐。交互与布局不重新设计，只把底下的数据源从块库换成新模型。（论文的阅读界面与评论仍整体推迟，不在照搬范围。）</p>
+  </div>
+  <ol>
+    <li><strong>完全重写实现，但继承行为规格。</strong>论文收集管线里真正贵的是摸索出来的规则（各家接口怎么解析、IEEE 与知网怎么下、翻译逐行怎么对位），它们活在旧仓的附件说明书与测试里，重写时当规格输入照搬，不凭印象重推。</li>
+    <li><strong>起全新名字。</strong>新插件名不带 <code>bn-</code> 前缀、与旧名不撞。agent 是靠 skill 名与命令前缀找说明书的，旧名字活着就会有会话按旧说明书往旧库写。新名字即新契约。</li>
+    <li><strong>新插件落在 evew5-gwbapps 单元</strong>新建插件仓，不开新单元。名字已定：论文线 <code>papers</code>（仓 <code>gwb-papers</code>、包 <code>@godcreator/gwb-papers</code>、命令前缀 <code>papers.</code>）、日志线 <code>journal</code>（仓 <code>gwb-journal</code>、包 <code>@godcreator/gwb-journal</code>、命令前缀 <code>journal.</code>）。两个仓已建好，构建与检查全绿；不建文档站（文档站在重写）。</li>
+    <li><strong>旧插件打废弃标记但不马上卸载。</strong>六个 bn-* 插件与旧论文库插件：README 与 SKILL 开头加「已废弃、继任者是谁、数据在哪」，发一版只升 y 的更新。default home 在迁移期内保留旧件——数据还在旧块库里，卸了就读不出来。</li>
+    <li><strong>论文材料布局原样沿用。</strong><code>y4hhy-paper-library</code> 的 <code>papers/&lt;文件夹&gt;/</code>（responses、pdf、raw、md、translate、assets）与块无关且已稳定，不搬不重构。</li>
+    <li><strong>阅读与评论整体推迟。</strong>论文这一阶段不设计在哪读、怎么读、怎么评论；日志的界面归属单独处理（见日志线）。</li>
+    <li><strong>每条线各自迁移对账，全绿后才退役旧件</strong>（default home 卸载，旧仓转归档状态）。</li>
+  </ol>
+
+  <h2>三、两条并行线</h2>
+  <table>
+    <tr><th>线</th><th>这一阶段做什么</th><th>明确不做</th><th>方案</th></tr>
+    <tr>
+      <td><strong>论文库 papers</strong></td>
+      <td>自己的论文数据库（新索引）＋ 入库完整功能：查询、题录导入、下载、转换、翻译、材料核对、读与列的命令</td>
+      <td>阅读界面、评论、正文拆段导入（body.import 整个消失）、作者机构实体化</td>
+      <td><a href="../gwb-papers/plan/papers.html">gwb-papers 仓 plan/papers.html</a></td>
+    </tr>
+    <tr>
+      <td><strong>日志 journal</strong></td>
+      <td>一天一个 mdx 文件的新插件：格式定义、月历与统计、记一笔排待办勾待办、快速记录、旧数据迁移</td>
+      <td>撤销历史（建议接受没有）、通用标签与评论、任何查询引擎</td>
+      <td><a href="journal.html">本仓 plan/journal.html</a></td>
+    </tr>
+  </table>
+
+  <p>两条线共享的只有两件事：命名与废弃标记（已做掉），以及最后退役旧件。除此之外互相不等待、不阻塞。</p>
+
+  <h2>四、进度（原阶段 0）</h2>
+  <ol>
+    <li>名字已定：论文线 papers、日志线 journal，仓与插件包都已建好，构建与检查全绿。</li>
+    <li>旧件打废弃标记并发版（进行中）：README 与 SKILL 首行「已废弃 → 继任者 → 数据位置」；default home 不卸载。</li>
+    <li>方案随讨论更新：各自的方案页在各仓 <code>plan/</code> 下维护，轨迹记在各仓 <code>trajectory/</code>（根卡带里程碑）。</li>
+  </ol>
+
+  <h2>五、已拍板的决策点（2026-10-12）</h2>
+  <div class="card">
+    <h3>决策一：普通笔记不迁移，留在旧块库里封存</h3>
+    <p><code>notes</code> 库整个不动，随块笔记一起退役封存。bn-tags、bn-comment 没有残存用户，journal 与 papers 各自迁移对账后即可把 bn-* 全部卸载。J4 只迁日志数据，P3 只迁论文题录、标签与评论里的失败原因。</p>
+  </div>
+  <div class="card">
+    <h3>决策二：不需要撤销历史</h3>
+    <p>文件与索引就是真相，写错了改回来；不引入 git、提交历史或任何撤销机制。</p>
+  </div>
+
+  <footer>重建背景 · gwb-papers/plan/background.html 与 gwb-journal/plan/background.html 各存一份 · 纯静态页，改完直接刷新浏览器即可</footer>
+</main>
+</body>
+</html>

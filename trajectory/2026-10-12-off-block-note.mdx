@@ -1,0 +1,15 @@
+---
+born-at: 2026-10-12T16:42
+type: choice
+parent: [2026-10-12-journal-root]
+label: 脱离块笔记
+domain: 重建
+---
+
+## 背景
+
+旧日志插件建在块笔记上：一天是特殊顶级块底下带唯一日期字段的块，正文锁死，写一笔待办要先查那天最后一个孩子是谁、带 expect 防冲突。日志本质是时间序列，不是树。人的原话：「块笔记给我带来过大的负担了」。日志在块笔记仓的记录见 [日志写路径](../../../gwb-block-note/docs-site/content/trajectory/2026-10-09-journal-writes-via-commit.md)。
+
+## 结论与边界
+
+日志从头独立：本仓 gwb-journal、插件 @godcreator/gwb-journal。一天一个 mdx 文件、文件名即日期，待办是普通 checklist 行；月历、每天统计、全库待办、连续天数全部从文件算出来，不要查询引擎、字段声明与提交协议。格式全功能（mdx）、渲染渐进（第一版按普通 markdown 渲染）。界面设计照搬旧插件——月历窗格、正文窗格、全库待办、状态栏快速记录，交互不重新设计；撤销历史不做（接受没有，背景页决策二）。方案全文在 plan/journal.html。

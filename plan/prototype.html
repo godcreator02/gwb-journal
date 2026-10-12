@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>日志线界面原型</title>
+<style>
+  :root {
+    --bg: #f2f1ee; --fg: #1f2328; --muted: #6b7280; --line: #e2dfda; --soft-line: #eceae5;
+    --card: #ffffff; --primary: #1a5fb4; --primary-soft: #eaf1fa; --secondary: #f0efec;
+    --danger: #c0392b;
+    --radius: 8px; --shadow: 0 1px 3px rgba(0,0,0,.08);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #101114; --fg: #e6e4e0; --muted: #9aa0aa; --line: #32353c; --soft-line: #2a2d33;
+      --card: #1c1e23; --primary: #7cb0f5; --primary-soft: #1c2938; --secondary: #26292f;
+      --danger: #e07b6e; --shadow: 0 1px 3px rgba(0,0,0,.4);
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font-family: "Sarasa Mono SC", "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif; line-height: 1.6; font-size: 14px; }
+  main { max-width: 62rem; margin: 0 auto; padding: 2rem 1.25rem 5rem; }
+  h1 { font-size: 1.5rem; margin: 0 0 .3rem; }
+  .meta { color: var(--muted); font-size: .85rem; margin-bottom: 1.5rem; }
+  .pane-label { color: var(--muted); font-size: .82rem; margin: 1.8rem 0 .5rem; }
+  .pane-label strong { color: var(--fg); }
+  a { color: var(--primary); }
+  .pane { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+  .pane-title { display: flex; align-items: center; gap: .5rem; padding: .45rem .8rem; border-bottom: 1px solid var(--soft-line); color: var(--muted); font-size: .82rem; }
+  .pane-body { padding: .7rem .9rem; }
+  .btn { display: inline-flex; align-items: center; gap: .3rem; border: 1px solid var(--line); border-radius: 6px; padding: .2rem .6rem; font-size: .82rem; background: var(--card); color: var(--fg); cursor: pointer; }
+  .btn.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .btn.selected { background: var(--secondary); border-color: transparent; }
+  .btn.ghost { border-color: transparent; background: transparent; color: var(--muted); }
+  .icon { width: .9rem; height: .9rem; stroke: currentColor; stroke-width: 2; fill: none; display: inline-block; vertical-align: -2px; }
+  .badge { display: inline-flex; align-items: center; border-radius: 999px; padding: 0 .55rem; font-size: .72rem; background: var(--secondary); }
+  input.fake { border: 1px solid var(--line); border-radius: 6px; padding: .22rem .55rem; font-size: .82rem; color: var(--fg); background: var(--card); outline: none; }
+  select.fake { border: 1px solid var(--line); border-radius: 6px; padding: .22rem .4rem; font-size: .82rem; color: var(--fg); background: var(--card); }
+  .muted { color: var(--muted); }
+  /* 窗格头部 */
+  .jhead { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem; padding: .15rem 0 .55rem; }
+  /* 月历 */
+  .calendar { border: 1px solid var(--line); border-radius: var(--radius); padding: .5rem; }
+  .week-heads, .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+  .week-heads span { text-align: center; font-size: .72rem; color: var(--muted); padding: .25rem 0; }
+  .day { display: flex; flex-direction: column; align-items: center; padding-bottom: 2px; }
+  .day .num { width: 1.65rem; height: 1.65rem; display: inline-flex; align-items: center; justify-content: center; border-radius: 6px; font-size: .82rem; border: none; background: transparent; color: var(--fg); cursor: pointer; }
+  .day .num.today { background: var(--primary); color: #fff; }
+  .day .num.selected { background: var(--secondary); }
+  .day .num.dim { color: var(--muted); opacity: .55; }
+  .day .num.rest { color: var(--danger); }
+  .day .num.workday-mark { color: var(--fg); }
+  .day .content-dot { margin-top: 2px; width: 4px; height: 4px; border-radius: 50%; background: var(--primary); }
+  .day .content-dot.empty { background: transparent; }
+  .cal-note { margin: .4rem .2rem 0; font-size: .72rem; color: var(--muted); }
+  /* 待办 */
+  .todo-head { display: flex; align-items: center; gap: .5rem; padding: .55rem 0 .3rem; font-size: .85rem; }
+  .todo-line { display: flex; align-items: center; gap: .5rem; padding: .15rem 0; }
+  .todo-date { width: 6.4rem; flex: none; font-size: .78rem; color: var(--fg); background: none; border: none; text-align: left; cursor: pointer; padding: .1rem .3rem; border-radius: 4px; }
+  .todo-date:hover { background: var(--secondary); }
+  .cbx { width: .95rem; height: .95rem; border: 1.5px solid var(--muted); border-radius: 4px; flex: none; display: inline-flex; align-items: center; justify-content: center; }
+  .cbx.checked { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .cbx.checked::after { content: "✓"; font-size: .7rem; }
+  .todo-text { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .84rem; }
+  .todo-text.done { color: var(--muted); text-decoration: line-through; }
+  .tagpill { display: inline-flex; align-items: center; border-radius: 999px; padding: 0 .45rem; font-size: .72rem; background: var(--primary-soft); color: var(--primary); vertical-align: 1px; }
+  /* 正文窗格 */
+  .day-doc { font-size: .88rem; }
+  .day-doc h2 { font-size: 1.05rem; margin: 0 0 .4rem; }
+  .day-doc .line { padding: .12rem 0; }
+  .day-doc .task { display: flex; gap: .5rem; align-items: center; }
+  .day-doc .src { background: var(--secondary); border-radius: 6px; padding: .4rem .6rem; font-family: monospace; font-size: .78rem; color: var(--muted); margin: .35rem 0; }
+  .paper-page { display: grid; grid-template-columns: minmax(14rem, 22rem) minmax(0,1fr); gap: 1rem; }
+  @media (max-width: 52rem) { .paper-page { grid-template-columns: 1fr; } }
+  .hint { background: var(--primary-soft); border: 1px solid var(--line); border-radius: var(--radius); padding: .7rem 1rem; font-size: .85rem; margin-bottom: .3rem; }
+  footer { margin-top: 4rem; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 1rem; }
+</style>
+</head>
+<body>
+<main>
+  <h1>日志线界面原型</h1>
+  <p class="meta">2026-10-12 · gwb-journal · 布局与交互照搬旧 bn-journal 窗格 · 数据全是假的 · 设计见 <a href="design.html">design.html</a></p>
+
+  <div class="hint">Ⓟ 原型说明：左窄窗格是日志窗格（月历 + 全部待办 + 快速记录），右边是点一天后在正文窗格打开的那个文件。月历格子：主色实心是今天、灰底是选中、有蓝点的那天有内容、红色是周末与假日、浅灰是上下月补白。</div>
+
+  <div class="paper-page">
+    <section class="pane">
+      <div class="pane-title">日志 · 2026年10月</div>
+      <div class="pane-body">
+        <div class="jhead">
+          <button class="btn">今天</button>
+          <button class="btn ghost">‹</button>
+          <button class="btn ghost">›</button>
+          <button class="btn ghost">2026年10月 ▾</button>
+        </div>
+        <div class="jhead">
+          <select class="fake"><option>待办</option><option>随手记</option></select>
+          <input class="fake" style="flex:1" placeholder="记到 10月12日（今天），回车保存">
+        </div>
+
+        <div class="calendar">
+          <div class="week-heads"><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span></div>
+          <div class="cal-grid">
+            <!-- 第一周：9月补白 + 10/1-4（国庆休，红） -->
+            <div class="day"><button class="num dim">28</button><span class="content-dot"></span></div>
+            <div class="day"><button class="num dim">29</button><span class="content-dot"></span></div>
+            <div class="day"><button class="num dim">30</button><span class="content-dot"></span></div>
+            <div class="day"><button class="num rest" title="国庆节 休">1</button><span class="content-dot"></span></div>
+            <div class="day"><button class="num rest" title="国庆节 休">2</button><span class="content-dot"></span></div>
+            <div class="day"><button class="num rest" title="国庆节 休">3</button><span class="content-dot"></span></div>
+            <div class="day"><button class="num rest" title="国庆节 休">4</button><span class="content-dot"></span></div>
+            <!-- 第二周：10/5-7 休，10/8 正常，10/9 周五，10/10 调休上班，10/11 周日休 -->
+            <div class="day"><button class="num rest" title="国庆节 休">5</button><span class="content-dot"></span></div>
+            <div class="day"><button class="num rest" title="国庆节 休">6</button><span class="content-dot"></span></div>
+            <div class="day"><button class="num rest" title="国庆节 休">7</button><span class="content-dot"></span></div>
+            <div class="day"><button class="num">8</button><span class="content-dot"></span></div>
+            <div class="day"><button class="num">9</button><span class="content-dot"></span></div>
+            <div class="day"><button class="num workday-mark" title="调休上班">10</button><span class="content-dot empty"></span></div>
+            <div class="day"><button class="num rest">11</button><span class="content-dot"></span></div>
+            <!-- 第三周：10/12 今天（周一） -->
+            <div class="day"><button class="num today">12</button><span class="content-dot"></span></div>
+            <div class="day"><button class="num selected">13</button><span class="content-dot empty"></span></div>
+            <div class="day"><button class="num">14</button><span class="content-dot empty"></span></div>
+            <div class="day"><button class="num">15</button><span class="content-dot empty"></span></div>
+            <div class="day"><button class="num">16</button><span class="content-dot empty"></span></div>
+            <div class="day"><button class="num rest">17</button><span class="content-dot empty"></span></div>
+            <div class="day"><button class="num rest">18</button><span class="content-dot empty"></span></div>
+            <!-- 第四、五周省略为示意 -->
+            <div class="day"><button class="num">19</button><span class="content-dot empty"></span></div>
+            <div class="day"><button class="num">20</button><span class="content-dot empty"></span></div>
+            <div class="day"><button class="num">21</button><span class="content-dot empty"></span></div>
+            <div class="day"><button class="num">22</button><span class="content-dot empty"></span></div>
+            <div class="day"><button class="num">23</button><span class="content-dot empty"></span></div>
+            <div class="day"><button class="num rest">24</button><span class="content-dot empty"></span></div>
+            <div class="day"><button class="num rest">25</button><span class="content-dot empty"></span></div>
+            <div class="day"><button class="num">26</button><span class="content-dot empty"></span></div>
+            <div class="day"><button class="num">27</button><span class="content-dot empty"></span></div>
+            <div class="day"><button class="num">28</button><span class="content-dot empty"></span></div>
+            <div class="day"><button class="num">29</button><span class="content-dot empty"></span></div>
+            <div class="day"><button class="num">30</button><span class="content-dot empty"></span></div>
+            <div class="day"><button class="num">31</button><span class="content-dot empty"></span></div>
+            <div class="day"><button class="num dim">1</button><span class="content-dot empty"></span></div>
+          </div>
+          <p class="cal-note">连续写了 5 天 · 最长 12 天（月历页脚：假日数据 2026-10-15 更新）</p>
+        </div>
+
+        <div class="todo-head">
+          <strong>全部待办</strong> <span class="badge">3</span>
+          <span style="margin-left:auto; display:inline-flex; align-items:center; gap:.35rem; font-size:.75rem" class="muted">
+            <span class="cbx checked" style="width:.8rem;height:.8rem"></span> 显示已完成
+          </span>
+        </div>
+        <div class="todo-line">
+          <button class="todo-date">2026-10-13</button>
+          <span class="cbx"></span>
+          <span class="todo-text">把 MMC 的仿真波形发给导师</span>
+        </div>
+        <div class="todo-line">
+          <button class="todo-date">2026-10-12</button>
+          <span class="cbx"></span>
+          <span class="todo-text">回复学报审稿意见</span>
+        </div>
+        <div class="todo-line">
+          <button class="todo-date">2026-10-09</button>
+          <span class="cbx"></span>
+          <span class="todo-text">交报销单</span>
+        </div>
+        <div class="todo-line">
+          <button class="todo-date">2026-10-08</button>
+          <span class="cbx checked"></span>
+          <span class="todo-text done">答辩 PPT 定稿</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="pane">
+      <div class="pane-title">2026-10-12.mdx · 十月 12日 周一</div>
+      <div class="pane-body day-doc">
+        <h2>10月12日 周一</h2>
+        <div class="line task"><span class="cbx"></span><span>回复学报审稿意见 <span class="tagpill">#学报</span></span></div>
+        <div class="line task"><span class="cbx"></span><span>把 MMC 的仿真波形发给导师 <span class="tagpill">#仿真</span></span></div>
+        <div class="line" style="margin-top:.4rem">今天把子模块电容电压平衡那一节改完了，波动降到了 3% 以内。 <span class="tagpill">#仿真</span> <a href="javascript:void(0)" style="text-decoration:underline">10月8日</a> 里记的对比实验数据可以直接用。</div>
+        <div class="line">新的审稿意见主要问两点：载波频率选取的依据、满载效率曲线为什么在 60% 负载附近有拐点。 <span class="tagpill">#学报</span> <span class="tagpill">#审稿</span></div>
+        <div class="src">&lt;Figure src="../assets/waveform.png" /&gt;　← mdx 组件：第一版按源码原样显示（渲染策略见 design.html）</div>
+        <p class="muted" style="font-size:.78rem;margin-top:.6rem">文件末尾就是快速记录落笔的地方——回车追加一行，文件不存在则此刻建。</p>
+      </div>
+    </section>
+  </div>
+
+  <p class="pane-label"><strong>对照说明</strong>：窗格头部、月历格子（今天/选中/补白/假日红/内容蓝点）、待办行（日期按钮 + 勾选框 + 文本，完成划线）与旧 bn-journal 一一对应；差别只有两处——正文窗格渲染的是当天的 mdx 文件（不再是块树），行尾 <code>#标签</code> 渲染成小圆徽章（回看用 <code>journal.tags</code> / <code>journal.tagged</code>，月历上不显示）。</p>
+
+  <footer>日志线原型 · gwb-journal/plan/prototype.html · 照搬旧界面设计，数据模型见 design.html</footer>
+</main>
+</body>
+</html>

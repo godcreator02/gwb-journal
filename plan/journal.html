@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>日志线方案 · 一天一个 mdx 文件</title>
+<style>
+  :root {
+    --bg: #faf9f7; --fg: #1f2328; --muted: #5f6672; --line: #e4e1db;
+    --card: #ffffff; --accent: #1a5fb4; --accent-soft: #eaf1fa;
+    --ok-bg: #eaf4ea; --ok-line: #79b56f; --ok-fg: #2f5d2a;
+    --no-bg: #f7ecec; --no-line: #cf8d8d; --no-fg: #7a3b3b;
+    --warn-bg: #fdf3e3; --warn-line: #e9b949; --warn-fg: #7a5a12;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #17181b; --fg: #e6e4e0; --muted: #9aa0aa; --line: #2e3138;
+      --card: #1f2126; --accent: #7cb0f5; --accent-soft: #1d2a3c;
+      --ok-bg: #1d2b1d; --ok-line: #4e7a46; --ok-fg: #9fd094;
+      --no-bg: #2e1d1d; --no-line: #8a5252; --no-fg: #e0a3a3;
+      --warn-bg: #2f2513; --warn-line: #8a6d1d; --warn-fg: #e5c876;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font-family: "Sarasa Mono SC", "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif;
+    line-height: 1.75; font-size: 16px;
+  }
+  main { max-width: 48rem; margin: 0 auto; padding: 3rem 1.25rem 5rem; }
+  h1 { font-size: 1.9rem; line-height: 1.35; margin: 0 0 .4rem; }
+  h2 { font-size: 1.3rem; margin: 2.8rem 0 .8rem; padding-bottom: .35rem; border-bottom: 1px solid var(--line); }
+  h3 { font-size: 1.05rem; margin: 1.6rem 0 .5rem; }
+  .meta { color: var(--muted); font-size: .88rem; margin-bottom: 2rem; }
+  nav.top { margin: 0 0 2rem; font-size: .92rem; color: var(--muted); }
+  nav.top a { color: var(--accent); text-decoration: none; }
+  a { color: var(--accent); }
+  code { background: var(--accent-soft); padding: .1em .35em; border-radius: 4px; font-size: .9em; }
+  pre { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: .8rem 1rem; overflow-x: auto; font-size: .85rem; line-height: 1.6; }
+  ul, ol { padding-left: 1.4rem; }
+  li { margin: .3rem 0; }
+  table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: .95rem; }
+  th, td { border: 1px solid var(--line); padding: .5rem .7rem; text-align: left; vertical-align: top; }
+  th { background: var(--card); }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 1rem 1.3rem; margin: 1rem 0; }
+  .card h3 { margin-top: .2rem; }
+  .scope-do   { background: var(--ok-bg);  border: 1px solid var(--ok-line);  border-radius: 10px; padding: 1rem 1.3rem; margin: 1rem 0; }
+  .scope-do h3   { color: var(--ok-fg); }
+  .scope-dont { background: var(--no-bg);  border: 1px solid var(--no-line);  border-radius: 10px; padding: 1rem 1.3rem; margin: 1rem 0; }
+  .scope-dont h3 { color: var(--no-fg); }
+  .note { background: var(--warn-bg); border: 1px solid var(--warn-line); border-radius: 10px; padding: 1rem 1.3rem; margin: 1rem 0; }
+  .note h3 { color: var(--warn-fg); margin-top: .1rem; }
+  .lead { font-size: 1.05rem; }
+  footer { margin-top: 4rem; color: var(--muted); font-size: .85rem; border-top: 1px solid var(--line); padding-top: 1rem; }
+  .stage { display: inline-block; background: var(--accent); color: var(--bg); border-radius: 6px; padding: 0 .6rem; font-size: .82rem; margin-right: .5rem; }
+</style>
+</head>
+<body>
+<main>
+  <nav class="top">（论文线在 <a href="../gwb-papers/plan/papers.html">gwb-papers 仓</a>）· 日志线方案 · <a href="design.html">设计</a> · <a href="prototype.html">界面原型</a> · <a href="background.html">重建背景</a></nav>
+
+  <h1>日志线：一天一个 mdx 文件</h1>
+  <p class="meta">2026-10-12 · 与论文线并行，互不依赖 · 完全替代 bn-journal · 里程碑记在本仓 <code>trajectory/</code> 根卡</p>
+
+  <p class="lead">日志是时间序列，就用时间序列的形状存：<strong>一天一个 mdx 文件，文件名即日期</strong>。月历、统计、全库待办全部从文件算出来，不需要任何查询引擎。保留 mdx 输入的灵活性——文件本身是全功能的，渲染渐进跟上。</p>
+
+  <div class="scope-do">
+    <h3>✓ 这一阶段做</h3>
+    <ul>
+      <li>文件格式定义与数据落位（J1）</li>
+      <li>读：月历、每天统计、全库待办（含过期）、连续天数（J2）</li>
+      <li>写：记一笔、排待办、改期、勾掉；快速记录的落点（J2）</li>
+      <li>界面照搬：旧 bn-journal 的月历、正文、待办、快速记录设计直接沿用（J3）</li>
+      <li>行尾标签：行尾 <code>#名字</code>，两条回看命令（journal.tags 聚合计数 / journal.tagged 列一个标签的全部行）（J2）</li>
+      <li>旧 journal 块迁移成按天文件（J4）</li>
+    </ul>
+  </div>
+  <div class="scope-dont">
+    <h3>✗ 这一阶段不做</h3>
+    <ul>
+      <li>撤销历史（建议接受没有——背景页决策二）</li>
+      <li>标签体系与评论：bn-tags 的层级标签块、bn-comment 不为日志复活——行尾 <code>#名字</code> 是文本，不是体系</li>
+      <li>块查询引擎、字段声明体系、提交与冲突协议——全都没有</li>
+      <li>mdx 组件系统与编译渲染（第一版按普通 markdown 渲染，见下）</li>
+    </ul>
+  </div>
+
+  <h2><span class="stage">J1</span>格式与数据</h2>
+  <pre>journal/
+├── 2026-10-10.mdx
+├── 2026-10-11.mdx
+└── 2026-10-12.mdx
+holidays.json          法定假日数据，照搬旧插件每年下载的文件</pre>
+  <ul>
+    <li><strong>文件名即日期、即唯一键</strong>：<code>YYYY-MM-DD.mdx</code>。认一天只看文件名，不看内容。</li>
+    <li><strong>frontmatter 放元数据</strong>：第一版允许为空；需要时再加字段（比如标记某天只在别处引用过）。不为未来预设。</li>
+    <li><strong>正文是 mdx</strong>：对人就是 markdown 超集，想写组件、写表格、嵌结构化内容都行；<strong>待办就是普通的 <code>- [ ]</code> / <code>- [x]</code> 行</strong>，不发明新语法。</li>
+    <li><strong>排未来的事</strong>：未来的日期也直接建文件，文件里一行待办；改期 = 把那一行挪到另一天的文件里。文件可以只有一行。</li>
+    <li><strong>跨天引用</strong>：相对链接到另一天的文件（<code>[10月8日](./2026-10-08.mdx)</code>），替代旧的块引用。</li>
+    <li><strong>渲染策略：格式全功能、渲染渐进。</strong>mdx 的成本全在渲染侧（编译、组件注册），存储侧为零。第一版渲染按普通 markdown 处理（组件原样显示源码即可），等真用到组件再上编译——文件不用改，只升级渲染器。</li>
+  </ul>
+
+  <h2><span class="stage">J2</span>读与写</h2>
+  <table>
+    <tr><th>能力</th><th>做法</th></tr>
+    <tr><td>月历</td><td>扫文件名 + 假日数据；窗口含两端最多 400 天，每天的条目数、待办数直接读文件</td></tr>
+    <tr><td>每天统计</td><td>写了多少条、几个待办、完成几个；有内容的日子列表</td></tr>
+    <tr><td>全库待办</td><td>扫全部文件的 checklist 行；早于今天还没勾的就是过期，排前面的按日期倒序</td></tr>
+    <tr><td>连续天数</td><td>有内容的日子连着算；current 今天没写从昨天起算——口径照搬旧插件</td></tr>
+    <tr><td>记一笔 / 排待办</td><td>对人是编辑文件；对 agent 直接读写文件（没有也可以加一条薄命令，实现时定，别造成第二个提交协议）</td></tr>
+    <tr><td>勾掉待办</td><td><code>- [ ]</code> 改 <code>- [x]</code>，纯文本编辑</td></tr>
+    <tr><td>快速记录</td><td>状态栏入口照旧，写进今天的文件末尾</td></tr>
+    <tr><td>行尾标签</td><td>一行末尾写 <code>#名字</code>（中文随便用，可挂几个）；<code>journal.tags</code> 聚合计数、<code>journal.tagged</code> 列一个标签的全部行按日期倒序。没有名字表、层级与改名管理</td></tr>
+  </table>
+
+  <h2><span class="stage">J3</span>界面：照搬旧设计</h2>
+  <p><strong>旧 bn-journal 的界面设计直接照搬，不重新设计交互。</strong>月历窗格、正文窗格、窗格下方全库待办、状态栏快速记录——布局与交互在新插件里原样重建，只是数据源从块库换成按天 mdx 文件：</p>
+  <ul>
+    <li><strong>月历</strong>：点一天打开那天的文件；还没有那天的文件时显示一页空白，写下第一行才建文件——「只点不写不留下空的日子」的行为照搬。</li>
+    <li><strong>正文窗格</strong>：从渲染块树换成渲染 mdx；第一版按普通 markdown 渲染（见 J1 的渲染策略），窗格本身照旧。</li>
+    <li><strong>全库待办、状态栏快速记录</strong>：行为与位置照搬，读写落到文件。</li>
+    <li>顺序：J1、J2 先做完（数据与命令可用），J3 独立做——它不阻塞任何数据工作。</li>
+  </ul>
+
+  <h2><span class="stage">J4</span>迁移</h2>
+  <ol>
+    <li>旧 journal 块按天导出：每天底下的普通块按顺序变成 mdx 行，待办的勾选状态保留；空的未来日期不导出。</li>
+    <li>对账：天数一致、待办数一致、勾选状态一致；抽查三天人工比对。</li>
+    <li>全绿后：旧 bn-journal 随整体退役一起卸载（与背景页决策一联动）。</li>
+  </ol>
+
+  <h2>验收标准</h2>
+  <ul>
+    <li><strong>J1–J2 过</strong>：迁移后的数据算出的月历、每天统计、全库待办、连续天数与旧插件口径一致，行尾标签的聚合计数与文件一致；记一笔→月历可见→勾掉全链路走通；未来日期排待办、改期走通。</li>
+    <li><strong>J3 过</strong>：照搬的月历、正文、全库待办、快速记录在深浅主题与窄窗口下通过一轮使用验收。</li>
+    <li><strong>J4 过</strong>：对账清单全绿。</li>
+  </ul>
+
+  <footer>日志线方案 · gwb-journal/plan/journal.html · 与论文线并行</footer>
+</main>
+</body>
+</html>

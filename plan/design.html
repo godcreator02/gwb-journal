@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>日志线设计 · 数据模型与关键机制</title>
+<style>
+  :root {
+    --bg: #faf9f7; --fg: #1f2328; --muted: #5f6672; --line: #e4e1db;
+    --card: #ffffff; --accent: #1a5fb4; --accent-soft: #eaf1fa;
+    --warn-bg: #fdf3e3; --warn-line: #e9b949; --warn-fg: #7a5a12;
+    --ok-bg: #eaf4ea; --ok-line: #79b56f; --ok-fg: #2f5d2a;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #17181b; --fg: #e6e4e0; --muted: #9aa0aa; --line: #2e3138;
+      --card: #1f2126; --accent: #7cb0f5; --accent-soft: #1d2a3c;
+      --warn-bg: #2f2513; --warn-line: #8a6d1d; --warn-fg: #e5c876;
+      --ok-bg: #1d2b1d; --ok-line: #4e7a46; --ok-fg: #9fd094;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font-family: "Sarasa Mono SC", "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif; line-height: 1.75; font-size: 16px; }
+  main { max-width: 52rem; margin: 0 auto; padding: 3rem 1.25rem 5rem; }
+  h1 { font-size: 1.8rem; line-height: 1.35; margin: 0 0 .4rem; }
+  h2 { font-size: 1.3rem; margin: 2.8rem 0 .8rem; padding-bottom: .35rem; border-bottom: 1px solid var(--line); }
+  h3 { font-size: 1.05rem; margin: 1.7rem 0 .5rem; }
+  .meta { color: var(--muted); font-size: .88rem; margin-bottom: 2rem; }
+  nav.top { margin: 0 0 2rem; font-size: .92rem; color: var(--muted); }
+  nav.top a { color: var(--accent); text-decoration: none; }
+  a { color: var(--accent); }
+  code { background: var(--accent-soft); padding: .1em .35em; border-radius: 4px; font-size: .88em; }
+  pre { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: .8rem 1rem; overflow-x: auto; font-size: .8rem; line-height: 1.65; }
+  pre code { background: none; padding: 0; font-size: 1em; }
+  ul, ol { padding-left: 1.4rem; } li { margin: .3rem 0; }
+  table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: .92rem; }
+  th, td { border: 1px solid var(--line); padding: .45rem .65rem; text-align: left; vertical-align: top; }
+  th { background: var(--card); }
+  .note { background: var(--warn-bg); border: 1px solid var(--warn-line); border-radius: 10px; padding: 1rem 1.3rem; margin: 1rem 0; }
+  .note h3 { color: var(--warn-fg); margin-top: .1rem; }
+  .okbox { background: var(--ok-bg); border: 1px solid var(--ok-line); border-radius: 10px; padding: 1rem 1.3rem; margin: 1rem 0; }
+  .lead { font-size: 1.05rem; }
+  footer { margin-top: 4rem; color: var(--muted); font-size: .85rem; border-top: 1px solid var(--line); padding-top: 1rem; }
+</style>
+</head>
+<body>
+<main>
+  <nav class="top"><a href="background.html">重建背景</a> · <a href="journal.html">日志线方案</a> · 设计 · <a href="prototype.html">界面原型</a></nav>
+
+  <h1>日志线设计：数据模型与关键机制</h1>
+  <p class="meta">2026-10-12 · gwb-journal · 对应方案页的 J1（格式）与 J2（读写）；界面照搬见原型页</p>
+
+  <p class="lead">全部数据就是一堆按天命名的 mdx 文件加一份假日数据。没有数据库、没有索引、没有提交协议——文件就是真相，读的人算，写的人编辑。</p>
+
+  <h2>一、数据放在哪</h2>
+  <pre><code>&lt;home&gt;/data/gwb-journal/
+├── journal/
+│   ├── 2026-10-10.mdx
+│   ├── 2026-10-11.mdx
+│   └── 2026-10-12.mdx      # 一天一个文件，文件名即日期、即唯一键
+└── holidays.json            # 每年的法定假日，照搬旧插件每年下载的数据文件</code></pre>
+
+  <h3>一天的文件长什么样</h3>
+  <pre><code>---
+（frontmatter 允许为空；需要时再加字段，不为未来预设）
+---
+
+- [ ] 把 MMC 的仿真波形发给导师 #仿真
+- [x] 回复学报审稿意见 #学报
+
+今天把子模块电容电压平衡那节改完了，波动降到了 3% 以内。 #仿真
+[10月8日](./2026-10-08.mdx) 里记的对比实验数据可以直接用。
+
+审稿意见主要问两点：载波频率的选取依据、满载效率曲线的拐点。 #学报 #审稿
+
+&lt;Figure src="../assets/waveform.png" /&gt;        ← mdx 组件：第一版渲染按源码原样显示</code></pre>
+  <table>
+    <tr><th>约定</th><th>内容</th></tr>
+    <tr><td>认一天</td><td>只看文件名 <code>YYYY-MM-DD.mdx</code>，不看内容。有文件=那天存在，没文件=没有</td></tr>
+    <tr><td>任务项</td><td>正文里任意缩进的 <code>- [ ]</code> / <code>- [x]</code> 行；勾掉就是把它改成 <code>[x]</code>，纯文本编辑</td></tr>
+    <tr><td>记事</td><td>其余的行都是记事，markdown 语法随便用（mdx 是 markdown 超集）</td></tr>
+    <tr><td>行尾标签</td><td>一行末尾的 <code>#名字</code>（<code>#</code> 后直到空白，中文随便用；可以挂几个：<code>#学报 #审稿</code>）。待办行、记事行都能挂。标签就是字符串：没有名字表、没有层级、没有改名管理——它就是文本</td></tr>
+    <tr><td>排未来的事</td><td>未来的日期同样直接建文件，文件里一行待办；改期 = 把那行挪到另一天的文件里。文件可以只有一行</td></tr>
+    <tr><td>跨天引用</td><td>相对链接 <code>[10月8日](./2026-10-08.mdx)</code>，替代旧系统的块引用</td></tr>
+  </table>
+
+  <h3>holidays.json（照搬旧格式）</h3>
+  <pre><code>{
+  "2026": {
+    "fetchedAt": "2026-02-15T10:00",
+    "days": {
+      "2026-10-01": { "off": true,  "name": "国庆节" },
+      "2026-10-07": { "off": false, "name": "调休上班" }
+    }
+  }
+}</code></pre>
+  <p>每年下载一次（下载得怎么样月历页脚照旧提示：没公布的、没下载到的、用了缓存的）。周里 <code>off:false</code> 是调休上班，<code>off:true</code> 才休。</p>
+
+  <h2>二、关键机制</h2>
+
+  <h3>1. 写 = 编辑文件</h3>
+  <p>人对人、agent 对 agent、人对 agent，全走同一条路：<strong>直接编辑那天的文件</strong>。没有提交、没有冲突协议、没有撤销历史（背景页决策二：接受没有）。并发编辑由文件系统与编辑器处理——一天一个文件，撞上的概率本来就小。</p>
+
+  <h3>2. 「只点不写不留下空的日子」（照搬）</h3>
+  <p>月历上点一天：有文件就在正文窗格打开；没文件显示一页空白（草稿态），<strong>写下第一行才建文件</strong>。点开看看不写，什么也不留下——不会有一堆只有日期的空文件。</p>
+
+  <h3>3. 聚合命令：现算，不落缓存</h3>
+  <table>
+    <tr><th>命令</th><th>做什么</th><th>算法</th></tr>
+    <tr><td><code>journal.calendar { from, to, lib? }</code></td><td>窗口（含两端最多 400 天）每天：有没有文件、假日、条目与待办数</td><td rowspan="3">扫文件名 + 逐文件读一遍。几千个文件全读是毫秒级，不做缓存不做索引；改了文件下次现算，永远跟文件一致</td></tr>
+    <tr><td><code>journal.days { from?, to? }</code></td><td>有内容的日子与每天统计（条数、待办、完成），外加连续天数 <code>streaks</code></td></tr>
+    <tr><td><code>journal.todos { includeDone? }</code></td><td>全库任务项：日期、文本、勾没勾；日志里的按日期倒序在前，别处没有（日志没有「别处」——这条只剩历史兼容的形状）</td></tr>
+    <tr><td><code>journal.tags {}</code> / <code>journal.tagged { tag }</code></td><td>行尾标签的聚合与回看（见关键机制 6）</td></tr>
+  </table>
+  <p>连续天数口径照旧：<code>current</code> 今天还没写就从昨天起算，今天以后的日子不算；<code>longest</code> 全史最长。</p>
+
+  <h3>4. 快速记录</h3>
+  <p>窗格头部那行（类型下拉：待办 / 随手记 + 输入框，回车保存）照搬：写进<strong>选中的那天</strong>的文件末尾——待办追加一行 <code>- [ ] …</code>，随手记追加一行文字。文件不存在就此刻建。状态栏入口同一实现。</p>
+
+  <h3>5. mdx 渲染策略：格式全功能，渲染渐进</h3>
+  <p>文件就是 mdx，想写组件、公式、表格随便写；第一版正文窗格按<strong>普通 markdown</strong> 渲染（组件行原样显示源码，见原型页）。真用到组件的那天再上 mdx 编译——文件一个字不用改，只升级渲染器。这条把「灵活」的成本限制在了渲染侧，存储侧永远是纯文本。</p>
+
+  <h3>6. 行尾标签：写在行尾，扫出来</h3>
+  <p>回看靠标签：<strong>一行末尾写 <code>#名字</code></strong>，写待办、记事时顺手挂上。没有标签体系——不建名字表、不管层级、没有改名命令（要批量改名就是全库文本替换，agent 或人自己做）；月历上不显示标签。</p>
+  <table>
+    <tr><th>命令</th><th>做什么</th><th>算法</th></tr>
+    <tr><td><code>journal.tags {}</code></td><td>全部标签：各多少行、最近出现在哪天</td><td rowspan="2">跟其他聚合一样现算：扫全部文件的行尾 <code>#名字</code>，不落缓存。大小写与全半角不归一——写什么就是什么</td></tr>
+    <tr><td><code>journal.tagged { tag }</code></td><td>一个标签的全部行：日期、行文本、是不是待办，按日期倒序——「上次 #仿真 记到哪了」就是它</td></tr>
+  </table>
+
+  <div class="okbox">
+    <p><strong>不做的</strong>再确认一遍：撤销历史、标签体系（层级、标签块、改名管理——行尾 <code>#名字</code> 是文本不是体系）与评论、查询引擎、字段声明、提交与冲突协议——一个都没有。</p>
+  </div>
+
+  <h2>三、窗格与界面的归属</h2>
+  <ul>
+    <li><strong>日志窗格</strong>（照搬旧布局）：头部「今天 / 月份导航 / 年月选择 / 快速记录行」→ 月历（紧凑格子：日期数字 + 有内容的圆点，周末与假日用颜色区分）→ 全部待办（计数徽章 + 显示已完成）。原型见 <a href="prototype.html">prototype.html</a>。</li>
+    <li><strong>正文窗格</strong>：点一天打开那天的文件，渲染 mdx（第一版按 markdown）。窗格本身照旧。</li>
+    <li>状态栏「快速记录」入口照旧，写进今天（或窗格里选中的那天）。</li>
+  </ul>
+
+  <h2>四、迁移对照（J4）</h2>
+  <table>
+    <tr><th>旧（块）</th><th>新（文件）</th></tr>
+    <tr><td>日志区特殊顶级块 + <code>journal.date</code> 唯一字段</td><td>文件名 <code>YYYY-MM-DD.mdx</code></td></tr>
+    <tr><td>一天底下的普通块（阅读序）</td><td>文件里的行（顺序保留）</td></tr>
+    <tr><td><code>- [ ]</code> 任务项与勾选状态</td><td>一模一样的 checklist 行</td></tr>
+    <tr><td><code>&lt;Ref to="那一天"/&gt;</code></td><td>相对链接</td></tr>
+    <tr><td>假日数据文件与下载</td><td>原样照搬（<code>holidays.json</code>）</td></tr>
+    <tr><td>空的未来日期块（排了待办才建）</td><td>一样：有第一行才建文件</td></tr>
+  </table>
+  <p>对账：天数一致、待办数一致、勾选状态一致，抽查三天人工比对。</p>
+
+  <footer>日志线设计 · gwb-journal/plan/design.html · 方案在 journal.html，界面原型在 prototype.html</footer>
+</main>
+</body>
+</html>
