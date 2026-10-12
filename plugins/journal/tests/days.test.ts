@@ -16,8 +16,8 @@ describe('splitTrailingTags', () => {
   it('一个标签、中文', () => {
     expect(splitTrailingTags('今天改完了那一节 #仿真')).toEqual({ text: '今天改完了那一节', tags: ['仿真'] })
   })
-  it('几个标签都剥下来', () => {
-    expect(splitTrailingTags('审稿意见两点 #学报 #审稿')).toEqual({ text: '审稿意见两点', tags: ['学报', '审稿'] })
+  it('几个标签都剥下来；/ 表示层级，整体是一个标签', () => {
+    expect(splitTrailingTags('审稿意见两点 #学报 #仿真/MMC')).toEqual({ text: '审稿意见两点', tags: ['学报', '仿真/MMC'] })
   })
   it('# 前没有空白不算（URL 锚点、C# 这类不误伤）', () => {
     expect(splitTrailingTags('看了 https://x.com/a#frag')).toEqual({ text: '看了 https://x.com/a#frag', tags: [] })
@@ -56,11 +56,11 @@ describe('statOfDay', () => {
 const sample = [
   {
     date: '2026-10-11',
-    lines: parseDayLines('- [ ] 昨天的事 #仿真\n- [x] 昨天做完的\n昨天的记事 #学报'),
+    lines: parseDayLines('- [ ] 昨天的事 #仿真\n- [x] 昨天做完的\n昨天的记事 #学报 #仿真'),
   },
   {
     date: '2026-10-12',
-    lines: parseDayLines('- [ ] 今天的事 #仿真\n今天的记事 #学报 #仿真'),
+    lines: parseDayLines('- [ ] 今天的事 #仿真/MMC\n今天的记事 #学报 #仿真/效率'),
   },
 ]
 
@@ -81,15 +81,38 @@ describe('todosOf', () => {
 })
 
 describe('taggedOf', () => {
-  it('一个标签的全部行，日期倒序', () => {
-    expect(taggedOf(sample, '仿真')).toEqual([
-      { date: '2026-10-12', text: '今天的事', task: 'open' },
-      { date: '2026-10-12', text: '今天的记事', task: null },
-      { date: '2026-10-11', text: '昨天的事', task: 'open' },
+  it('一个标签的全部行，日期倒序；行尾带它实际打的标签', () => {
+    expect(taggedOf(sample, '学报', false)).toEqual([
+      { date: '2026-10-12', text: '今天的记事', task: null, tags: ['学报', '仿真/效率'] },
+      { date: '2026-10-11', text: '昨天的记事', task: null, tags: ['学报', '仿真'] },
     ])
   })
+  it('默认连下级一起：查「仿真」也回「仿真/MMC」的行（照旧 bn-tags 的习惯）', () => {
+    expect(taggedOf(sample, '仿真', false).map((row) => row.text)).toEqual(['今天的事', '今天的记事', '昨天的事', '昨天的记事'])
+  })
+  it('exact 只回精确路径', () => {
+    expect(taggedOf(sample, '仿真', true).map((row) => row.text)).toEqual(['昨天的事', '昨天的记事'])
+    expect(taggedOf(sample, '仿真/MMC', false).map((row) => row.text)).toEqual(['今天的事'])
+  })
   it('没有这个标签回空', () => {
-    expect(taggedOf(sample, '不存在')).toEqual([])
+    expect(taggedOf(sample, '不存在', false)).toEqual([])
+  })
+})
+
+describe('tagsOf', () => {
+  it('按路径段组树：lines 是直接行数、withChildren 连下级，根按 withChildren 降序', () => {
+    const tree = tagsOf(sample)
+    expect(tree).toHaveLength(2)
+    const sim = tree.find((node) => node.path === '仿真')
+    expect(sim?.lines).toBe(2)
+    expect(sim?.withChildren).toBe(4)
+    expect(sim?.children.map((child) => child.path)).toEqual(['仿真/MMC', '仿真/效率'])
+    expect(sim?.lastDate).toBe('2026-10-12')
+    const journal = tree.find((node) => node.path === '学报')
+    expect(journal?.withChildren).toBe(2)
+  })
+  it('没有标签回空树', () => {
+    expect(tagsOf([])).toEqual([])
   })
 })
 
@@ -114,14 +137,5 @@ describe('toggleTaskLine', () => {
 
   it('翻回未完成也行', () => {
     expect(toggleTaskLine('- [x] 交报销', '交报销', false).content).toBe('- [ ] 交报销')
-  })
-})
-
-describe('tagsOf', () => {
-  it('计数、最近日子，按行数降序', () => {
-    expect(tagsOf(sample)).toEqual([
-      { tag: '仿真', lines: 3, lastDate: '2026-10-12' },
-      { tag: '学报', lines: 2, lastDate: '2026-10-12' },
-    ])
   })
 })

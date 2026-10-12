@@ -195,11 +195,12 @@ function JournalPane({ host, shell }: { host: HostBridge; shell: ShellBridge }):
     const restDay = holiday?.off === true || (weekdayOf(date)! >= 5 && holiday?.off !== false)
     const hasContent = (info?.stat?.entries ?? 0) + (info?.stat?.tasks ?? 0) > 0
     const isToday = date === today
+    const tone = isToday ? 'journal:bg-primary journal:text-primary-foreground' : date === selected ? 'journal:bg-secondary' : 'journal:hover:bg-muted'
     return (
-      <div key={date} className="journal:flex journal:flex-col journal:items-center journal:pb-1">
-        <Button
-          variant={isToday ? 'default' : date === selected ? 'secondary' : 'ghost'}
-          size="icon-sm"
+      <div key={date} className="journal:flex journal:flex-col journal:items-center">
+        <button
+          type="button"
+          className={`journal:flex journal:size-6 journal:items-center journal:justify-center journal:rounded-md journal:text-xs ${tone}`}
           aria-label={dayButtonLabelOf(date, holiday, isToday)}
           aria-pressed={date === selected}
           title={`${formatDay(date)}：打开当天${hasContent ? '，有内容' : ''}`}
@@ -209,8 +210,8 @@ function JournalPane({ host, shell }: { host: HostBridge; shell: ShellBridge }):
           }}
         >
           <span className={isToday ? '' : !inMonth ? 'journal:text-muted-foreground' : restDay ? 'journal:text-destructive' : ''}>{String(Number(date.slice(8)))}</span>
-        </Button>
-        {hasContent ? <span aria-hidden="true" className="journal:mt-0.5 journal:size-1 journal:rounded-full journal:bg-primary" /> : <span aria-hidden="true" className="journal:mt-0.5 journal:size-1" />}
+        </button>
+        <span aria-hidden="true" className={`journal:mt-px journal:size-[3px] journal:rounded-full ${hasContent ? 'journal:bg-primary' : ''}`} />
       </div>
     )
   }
@@ -308,15 +309,15 @@ function JournalPane({ host, shell }: { host: HostBridge; shell: ShellBridge }):
         ),
       )}
 
-      <section aria-label="日志月历" className="journal:flex-none journal:rounded-lg journal:border journal:border-border journal:p-2">
-        <div className="journal:grid journal:grid-cols-7 journal:gap-1">
+      <section aria-label="日志月历" className="journal:flex-none journal:rounded-lg journal:border journal:border-border journal:p-1.5">
+        <div className="journal:grid journal:grid-cols-7">
           {WEEK_HEADS.map((head) => (
-            <span key={head} className="journal:py-1 journal:text-center journal:text-xs journal:text-muted-foreground">
+            <span key={head} className="journal:py-0.5 journal:text-center journal:text-[10px] journal:text-muted-foreground">
               {head}
             </span>
           ))}
         </div>
-        <div className="journal:grid journal:grid-cols-7 journal:gap-x-1">{grid.flat().map((date) => cell(date))}</div>
+        <div className="journal:grid journal:grid-cols-7">{grid.flat().map((date) => cell(date))}</div>
       </section>
       <section aria-label="全部待办" className="journal:min-w-0 journal:flex-1">
         <div className="journal:flex journal:items-center journal:gap-2 journal:py-2">

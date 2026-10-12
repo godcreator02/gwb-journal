@@ -1,6 +1,6 @@
 {
   "name": "@godcreator/gwb-journal",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "日志：一天一个 mdx 文件，月历、待办、统计与快速记录；取代 gwb-bn-journal",
   "type": "module",
   "exports": {

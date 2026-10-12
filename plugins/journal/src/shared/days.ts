@@ -94,38 +94,50 @@ export function todosOf(days: readonly { date: string; lines: readonly DayLine[]
   return out
 }
 
-/** 一个标签的回看：一行一条，日期倒序（同一天保持行序） */
+/** 一个标签的回看：一行一条，日期倒序（同一天保持行序）；tags 是这一行实际打的标签（显示徽章用） */
 export interface TaggedRow {
   date: string
   text: string
   task: 'open' | 'done' | null
+  tags: string[]
 }
 
-export function taggedOf(days: readonly { date: string; lines: readonly DayLine[] }[], tag: string): TaggedRow[] {
+/** `tag` 含下级时一行算不算：`#仿真` 也算 `#仿真/MMC` 那行的（照旧 bn-tags 的习惯）；exact 只认精确路径 */
+export function tagMatches(lineTag: string, tag: string, exact: boolean): boolean {
+  if (exact) return lineTag === tag
+  return lineTag === tag || lineTag.startsWith(`${tag}/`)
+}
+
+export function taggedOf(days: readonly { date: string; lines: readonly DayLine[] }[], tag: string, exact: boolean): TaggedRow[] {
   const ordered = [...days].sort((left, right) => right.date.localeCompare(left.date))
   const out: TaggedRow[] = []
   for (const day of ordered) {
     for (const line of day.lines) {
-      if (line.tags.includes(tag)) out.push({ date: day.date, text: line.text, task: line.task })
+      if (line.tags.some((each) => tagMatches(each, tag, exact))) out.push({ date: day.date, text: line.text, task: line.task, tags: line.tags })
     }
   }
   return out
 }
 
-/** 标签总览：每个标签挂在几行、最近出现在哪天，按行数降序 */
-export interface TagSummary {
+/** 标签树的一个节点：`path` 是完整路径（`仿真/MMC`），`tag` 是最后一段；`lines` 是直接打这个路径的行数，`withChildren` 连下级一起数 */
+export interface TagNode {
   tag: string
+  path: string
   lines: number
+  withChildren: number
+  /** 含下级里最近出现的日子（树排序与显示用） */
   lastDate: string
+  children: TagNode[]
 }
 
-export function tagsOf(days: readonly { date: string; lines: readonly DayLine[] }[]): TagSummary[] {
-  const stats = new Map<string, { lines: number; lastDate: string }>()
+/** 标签总览：按路径段组树，根一层按含下级的行数降序 */
+export function tagsOf(days: readonly { date: string; lines: readonly DayLine[] }[]): TagNode[] {
+  const exact = new Map<string, { lines: number; lastDate: string }>()
   for (const day of days) {
     for (const line of day.lines) {
       for (const tag of line.tags) {
-        const known = stats.get(tag)
-        if (known === undefined) stats.set(tag, { lines: 1, lastDate: day.date })
+        const known = exact.get(tag)
+        if (known === undefined) exact.set(tag, { lines: 1, lastDate: day.date })
         else {
           known.lines += 1
           if (day.date > known.lastDate) known.lastDate = day.date
@@ -133,7 +145,33 @@ export function tagsOf(days: readonly { date: string; lines: readonly DayLine[] 
       }
     }
   }
-  return [...stats.entries()].map(([tag, stat]) => ({ tag, ...stat })).sort((left, right) => right.lines - left.lines || left.tag.localeCompare(right.tag))
+  const roots: TagNode[] = []
+  const byPath = new Map<string, TagNode>()
+  const nodeAt = (path: string): TagNode => {
+    const found = byPath.get(path)
+    if (found !== undefined) return found
+    const slash = path.lastIndexOf('/')
+    const parent = slash === -1 ? null : nodeAt(path.slice(0, slash))
+    const created: TagNode = { tag: path.slice(slash + 1), path, lines: 0, withChildren: 0, lastDate: '', children: [] }
+    byPath.set(path, created)
+    ;(parent === null ? roots : parent.children).push(created)
+    return created
+  }
+  for (const [path, stat] of [...exact.entries()].sort((left, right) => left[0].localeCompare(right[0]))) {
+    const node = nodeAt(path)
+    node.lines = stat.lines
+    node.lastDate = stat.lastDate
+  }
+  /** 自底向上补 withChildren 与 lastDate（父的最近日子取自己与下级里最近的） */
+  const settle = (node: TagNode): void => {
+    node.children.sort((left, right) => right.withChildren - left.withChildren || left.tag.localeCompare(right.tag))
+    for (const child of node.children) settle(child)
+    node.withChildren = node.lines + node.children.reduce((sum, child) => sum + child.withChildren, 0)
+    node.lastDate = [node.lastDate, ...node.children.map((child) => child.lastDate)].reduce((latest, each) => (each > latest ? each : latest), '')
+  }
+  for (const root of roots) settle(root)
+  roots.sort((left, right) => right.withChildren - left.withChildren || left.tag.localeCompare(right.tag))
+  return roots
 }
 
 /**

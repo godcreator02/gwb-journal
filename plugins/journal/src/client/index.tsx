@@ -8,14 +8,16 @@
  */
 
 import type { PaneArgs, PaneHandle, StatusItemArgs, StatusItemHandle } from '@godcreator/gwb-shell/pane'
-import { DAY_PANE, JOURNAL_PANE } from '../shared/types.js'
+import { DAY_PANE, JOURNAL_PANE, TAGS_PANE } from '../shared/types.js'
 import { mountDayPane } from './day-pane.js'
 import { mountJournalPane } from './journal-pane.js'
 import { mountStatusCapture } from './status-capture.js'
+import { mountTagsPane } from './tags-pane.js'
 
 export function mountPane(args: PaneArgs, container: HTMLElement): PaneHandle {
   if (args.pane.id === DAY_PANE) return mountDayPane(args, container)
   if (args.pane.id === JOURNAL_PANE) return mountJournalPane(args, container)
+  if (args.pane.id === TAGS_PANE) return mountTagsPane(args, container)
   throw new Error(`这个窗格 id 不认识：${args.pane.id}`)
 }
 

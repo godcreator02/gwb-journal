@@ -141,9 +141,11 @@ function tagsCommand(deps: CommandDeps): JournalCommand {
   return {
     definition: {
       name: TAGS_COMMAND,
-      description: '全部行尾标签：各挂在几行、最近出现在哪天',
+      description: '全部行尾标签：按路径段组树，各挂在几行、最近出现在哪天',
       effect: 'read',
-      usage: '无参数。标签是一行末尾的 `#名字`（每个前面是空白或行首）。回 { tags }，按行数降序：[{ tag, lines, lastDate }]',
+      usage:
+        '无参数。标签是一行末尾的 `#名字`（每个前面是空白或行首），名字里写 `/` 表示层级：`#仿真/MMC` 是「仿真」的下级，打它也算打了「仿真」。' +
+        '回 { tags }：树按含下级的行数降序，每个节点 { tag（最后一段）, path（完整路径）, lines（直接打这个路径的行数）, withChildren（连下级）, lastDate（含下级最近出现）, children }',
     },
     run: (raw) =>
       envelopeOf(async (): Promise<TagsResult> => {
@@ -156,24 +158,25 @@ function tagsCommand(deps: CommandDeps): JournalCommand {
 }
 
 function taggedCommand(deps: CommandDeps): JournalCommand {
-  const keys = ['tag', ...PAGING_KEYS]
+  const keys = ['tag', 'exact', ...PAGING_KEYS]
   return {
     definition: {
       name: TAGGED_COMMAND,
-      description: '列打了某个行尾标签的全部行，按日期倒序——回看用',
+      description: '列打了某个行尾标签的全部行（默认连下级一起），按日期倒序——回看用',
       effect: 'read',
       usage:
-        `{ tag: string（# 后面那段，不含 #）, ${PAGING_USAGE} }。` +
-        '回 { rows, total, nextOffset }，rows 每项 { date, text, task }：text 已去掉行尾标签，task 是 "open" / "done"，不是任务项为 null',
+        `{ tag: string（# 后面那段，可含 / 表层级）, exact?: boolean（true 只回精确这个路径的行；缺省连下级一起：查「仿真」也回「仿真/MMC」的行）, ${PAGING_USAGE} }。` +
+        '回 { rows, total, nextOffset }，rows 每项 { date, text, task, tags }：text 已去掉行尾标签，task 是 "open" / "done"，不是任务项为 null，tags 是这一行实际打的标签',
     },
     run: (raw) =>
       envelopeOf(async (): Promise<TaggedResult> => {
         const fields = argumentFields(raw, keys)
         const tag = requireTag(fields)
+        const exact = optionalBoolean(fields, 'exact') ?? false
         const paging = pagingOf(fields)
         const files = await deps.store.days()
         const all = [...files.entries()].map(([date, content]) => ({ date, lines: parseDayLines(content) }))
-        const page = pageOf(taggedOf(all, tag), paging)
+        const page = pageOf(taggedOf(all, tag, exact), paging)
         return { rows: page.items, total: page.total, nextOffset: page.nextOffset }
       }),
   }

@@ -110,7 +110,7 @@ holidays.json          法定假日数据，照搬旧插件每年下载的文件
     <tr><td>记一笔 / 排待办</td><td>对人是编辑文件；对 agent 直接读写文件（没有也可以加一条薄命令，实现时定，别造成第二个提交协议）</td></tr>
     <tr><td>勾掉待办</td><td><code>- [ ]</code> 改 <code>- [x]</code>，纯文本编辑</td></tr>
     <tr><td>快速记录</td><td>状态栏入口照旧，写进今天的文件末尾</td></tr>
-    <tr><td>行尾标签</td><td>一行末尾写 <code>#名字</code>（中文随便用，可挂几个）；<code>journal.tags</code> 聚合计数、<code>journal.tagged</code> 列一个标签的全部行按日期倒序。没有名字表、层级与改名管理</td></tr>
+    <tr><td>行尾标签</td><td>一行末尾写 <code>#名字</code>（中文随便用，可挂几个）；名字里写 <code>/</code> 表示层级（<code>#仿真/MMC</code> 算打了「仿真」）。<code>journal.tags</code> 按路径段组树、<code>journal.tagged</code> 列一个标签的全部行按日期倒序（默认连下级）。没有名字表与改名管理；标签窗格看全部标签</td></tr>
   </table>
 
   <h2><span class="stage">J3</span>界面：照搬旧设计</h2>

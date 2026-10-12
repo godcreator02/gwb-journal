@@ -1,7 +1,7 @@
 // 两端共用的回执形状：聚合命令、快速记录与读一天。字段名对着旧 bn-journal 的回执取，窗格照搬时少改
-import type { DayLine, DayStat, TaggedRow, TagSummary, TodoRow } from './days.js'
+import type { DayLine, DayStat, TagNode, TaggedRow, TodoRow } from './days.js'
 
-export type { DayLine, TodoRow } from './days.js'
+export type { DayLine, TagNode, TaggedRow, TodoRow } from './days.js'
 
 /** 列表命令的分页：`total` 是一共几条，`nextOffset` 是下一页从第几条起，读完是 null */
 export interface PageInfo {
@@ -55,7 +55,8 @@ export interface TodosResult extends PageInfo {
 }
 
 export interface TagsResult {
-  tags: TagSummary[]
+  /** 标签树：按路径段嵌套（`#仿真/MMC` 是「仿真」的下级），根一层按含下级的行数降序 */
+  tags: TagNode[]
 }
 
 export interface TaggedResult extends PageInfo {
@@ -88,4 +89,5 @@ export const TOGGLE_COMMAND = 'journal.toggle'
 /** 窗格与状态栏的 id：node 端登记、浏览器端开窗格用的是同一个 */
 export const JOURNAL_PANE = 'journal'
 export const DAY_PANE = 'day'
+export const TAGS_PANE = 'tags'
 export const QUICK_CAPTURE_ID = 'quick-capture'

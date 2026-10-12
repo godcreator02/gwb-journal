@@ -37,8 +37,8 @@ export function requireText(fields: Record<string, unknown>, key: string): strin
 
 export function requireTag(fields: Record<string, unknown>): string {
   const value = fields['tag']
-  if (typeof value !== 'string' || value === '') reject('tag 要是标签名（# 后面的那段，非空、不含空白）')
-  return /\s/.test(value as string) ? reject('tag 里不能有空白（# 后面直到空白就是一个标签）') : (value as string)
+  if (typeof value !== 'string' || value === '') reject('tag 要是标签名（# 后面那段，非空、不含空白；写 / 表示层级，如 仿真/MMC）')
+  return /\s/.test(value as string) ? reject('tag 里不能有空白（# 后面直到空白就是一个标签；/ 表示层级）') : (value as string)
 }
 
 export function optionalBoolean(fields: Record<string, unknown>, key: string): boolean | undefined {
