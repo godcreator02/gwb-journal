@@ -1,19 +1,26 @@
 {
   "name": "@godcreator/gwb-journal",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "日志：一天一个 mdx 文件，月历、待办、统计与快速记录；取代 gwb-bn-journal",
+  "license": "MIT",
   "type": "module",
   "exports": {
     ".": "./dist/index.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "LICENSE"
   ],
   "keywords": [
     "gwb-plugin"
   ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/godcreator02/gwb-journal.git"
+  },
   "publishConfig": {
-    "registry": "https://git.tianshen02.online:28377/api/packages/godcreator/npm/"
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
   },
   "scripts": {
     "build": "node build.ts && tailwindcss -i src/client/styles.css -o dist/style.css",
