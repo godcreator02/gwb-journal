@@ -14,7 +14,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { CAPTURE_KINDS, type CaptureKind } from '../shared/capture.js'
-import { formatDay, isIsoDate, isoOf } from '../shared/date.js'
+import { formatDay, isIsoDate, systemClock, todayOf } from '../shared/date.js'
 import { CAPTURE_COMMAND, DAY_COMMAND, TOGGLE_COMMAND, type DayLine, type DayResult } from '../shared/types.js'
 import { callData, errorText } from './calls.js'
 
@@ -23,7 +23,7 @@ export function mountDayPane(args: PaneArgs, container: HTMLElement): PaneHandle
   const dateOf = (params: Record<string, unknown> | undefined): string => {
     const given = params?.['date']
     if (typeof given === 'string' && isIsoDate(given)) return given
-    if (given === undefined) return isoOf(new Date())
+    if (given === undefined) return todayOf(systemClock)
     throw new Error(`窗格参数 date 要是一天（YYYY-MM-DD），拿到的是：${String(given)}`)
   }
   const draw = (date: string): void => root.render(<DayPane key={date} host={args.host} shell={args.shell} date={date} />)

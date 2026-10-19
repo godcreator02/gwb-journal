@@ -2,10 +2,12 @@
  * 法定假日与调休：每年由国务院公布、算不出来，从 holiday-cn（github.com/NateScarlet/holiday-cn）按年下载，
  * 经 jsDelivr 取，整份缓存在本插件的数据文档 `holidays` 里。
  *
- * 今年以前的年份缓存了就不再下载；今年与以后缓存超过 `REFRESH_DAYS` 天重新下载（公告偶尔会补发更正），
+ * 今年（按东八区算）以前的年份缓存了就不再下载；今年与以后缓存超过 `REFRESH_DAYS` 天重新下载（公告偶尔会补发更正），
  * 还没公布（数据源里那一年是空表）的超过一天就重新下载。下载不到时有缓存就用缓存、状态报 `stale`，没有缓存报 `failed`，原因写进返回结果。
+ * 下载时刻 `fetchedAt` 写东八区带偏移的 ISO 串。
  */
 
+import { utc8Iso, utc8PartsOf } from '@godcreator/utc8-time'
 import type { HolidayYearStatus } from '../shared/types.js'
 
 export const HOLIDAY_DOC = 'holidays'
@@ -90,7 +92,7 @@ function ageInDays(fetchedAt: string, now: Date): number {
 
 export function needsFetch(year: number, cached: CachedYear | undefined, now: Date): boolean {
   if (cached === undefined) return true
-  if (year < now.getFullYear()) return false
+  if (year < utc8PartsOf(now).year) return false
   const limit = cached.days.length === 0 ? UNPUBLISHED_REFRESH_DAYS : REFRESH_DAYS
   return ageInDays(cached.fetchedAt, now) > limit
 }
@@ -118,7 +120,7 @@ export function createHolidayBook(deps: { fetchText: FetchText; store: HolidaySt
       const reply = await deps.fetchText(holidayUrlOf(year))
       if (reply.status !== 200) throw new Error(`${holidayUrlOf(year)} 回 HTTP ${String(reply.status)}`)
       const days = parseHolidayYear(reply.text, year)
-      const entry = { fetchedAt: now.toISOString(), days }
+      const entry = { fetchedAt: utc8Iso(now), days }
       await remember(year, entry)
       return { year, state: days.length === 0 ? 'unpublished' : 'published', fetchedAt: entry.fetchedAt, error: null, days }
     } catch (err) {

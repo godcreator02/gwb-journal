@@ -16,7 +16,7 @@ import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { CAPTURE_KINDS, type CaptureKind } from '../shared/capture.js'
-import { formatDay, formatMonth, isoOf, monthGrid, monthOf, shiftMonth, weekdayOf } from '../shared/date.js'
+import { formatDay, formatMonth, monthGrid, monthOf, shiftMonth, systemClock, todayOf, weekdayOf } from '../shared/date.js'
 import { DAY_PANE } from '../shared/types.js'
 import { CALENDAR_COMMAND, CAPTURE_COMMAND, TODOS_COMMAND, TOGGLE_COMMAND, type CalendarDay, type CalendarResult, type HolidayYearStatus, type TodoRow } from '../shared/types.js'
 import { callData, errorText } from './calls.js'
@@ -73,7 +73,7 @@ interface Shown {
 }
 
 function JournalPane({ host, shell }: { host: HostBridge; shell: ShellBridge }): ReactNode {
-  const [today] = useState(() => isoOf(new Date()))
+  const [today] = useState(() => todayOf(systemClock))
   const [shown, setShown] = useState<Shown | null>(null)
   const [todos, setTodos] = useState<TodoRow[] | null>(null)
   const [selected, setSelected] = useState(today)

@@ -1,9 +1,13 @@
 /**
- * 日志要的日期算术：本地时区的 `YYYY-MM-DD`、前后一天、某个月有哪几天、月历网格。
+ * 日志要的日期：「今天」、前后一天、某个月有哪几天、月历网格。
  *
- * 一律按本地时区：「今天」是人所在那一天；`Date#toISOString()` 是 UTC，东八区早上八点以前会差一天。
- * 进出都是 `YYYY-MM-DD` 字符串，时区只在 `dateOf` / `isoOf` 里各用一次。
+ * 「今天」按东八区算，不跟本机时区走：用户常在亚洲与美国之间往返，在美国晚上九点记的，记到中国的第二天。
+ * 把一个时刻换成日期串只有 `todayOf` 这一处，用 `formatUtc8`。
+ * 其余函数进出都是 `YYYY-MM-DD` 字符串，只做日历算术：内部借本机时区零点的 `Date` 来算（`dateOf` 造、`isoOfLocalMidnight` 读回），
+ * 结果与本机时区无关。
  */
+
+import { formatUtc8 } from '@godcreator/utc8-time'
 
 /** `YYYY-MM-DD` 的形状 */
 const ISO = /^(\d{4})-(\d{2})-(\d{2})$/
@@ -33,17 +37,20 @@ export function isIsoDate(text: string): boolean {
   return dateOf(text) !== null
 }
 
-/** `Date` → 本地时区的那一天 */
-export function isoOf(date: Date): string {
+/** `dateOf` 造出来的本机零点 → 日期串。只给日历算术用，不拿它换真实时刻：那会按本机时区算 */
+function isoOfLocalMidnight(date: Date): string {
   const year = String(date.getFullYear()).padStart(4, '0')
   const month = String(date.getMonth() + 1).padStart(2, '0')
   const day = String(date.getDate()).padStart(2, '0')
   return `${year}-${month}-${day}`
 }
 
-/** 今天。钟由调用方给（生产是真钟，测试是固定钟） */
+/** 读真实时间的钟 */
+export const systemClock = { now: (): Date => new Date() }
+
+/** 今天，东八区的那一天。钟由调用方给（生产是 `systemClock`，测试是固定钟） */
 export function todayOf(clock: { now(): Date }): string {
-  return isoOf(clock.now())
+  return formatUtc8(clock.now(), 'yyyy-MM-dd')
 }
 
 /** 前后挪几天；日期形状不对回 null */
@@ -51,7 +58,7 @@ export function addDays(iso: string, days: number): string | null {
   const at = dateOf(iso)
   if (at === null) return null
   at.setDate(at.getDate() + days)
-  return isoOf(at)
+  return isoOfLocalMidnight(at)
 }
 
 /** 从 `from` 到 `to` 隔几天（`to` 在前是负数）；形状不对回 null。按日历日数，不受夏令时那一小时影响 */

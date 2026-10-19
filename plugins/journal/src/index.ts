@@ -8,6 +8,7 @@ import type {} from '@godcreator/gwb-shell'
 import { journalCommands, type JournalClock } from './node/commands.js'
 import { createHolidayBook, HOLIDAY_DOC, type FetchText } from './node/holidays.js'
 import { createJournalStore } from './node/store.js'
+import { systemClock } from './shared/date.js'
 import { DAY_PANE, JOURNAL_PANE, QUICK_CAPTURE_ID } from './shared/types.js'
 
 export const name = 'gwb-journal'
@@ -38,7 +39,7 @@ export function apply(ctx: GwbContext, options: JournalOptions = {}): void {
   if (commands === undefined) throw new Error('日志插件要命令总线 gwbCommands：inject 里写了它，却没拿到')
   const data = ctx.gwbData
   if (data === undefined) throw new Error('日志插件要数据文档 gwbData：inject 里写了它，却没拿到')
-  const clock = options.clock ?? { now: () => new Date() }
+  const clock = options.clock ?? systemClock
   const store = createJournalStore(data.dir)
   const holidays = createHolidayBook({
     fetchText: options.fetchText ?? REAL_FETCH,

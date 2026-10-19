@@ -1,5 +1,44 @@
-import { describe, expect, it } from 'vitest'
-import { addDays, dateOf, daysBetween, daysInMonth, isIsoDate, monthGrid, weekdayOf } from '../src/shared/date.js'
+import { afterEach, describe, expect, it } from 'vitest'
+import { addDays, dateOf, daysBetween, daysInMonth, isIsoDate, monthGrid, todayOf, weekdayOf } from '../src/shared/date.js'
+
+const originalTimeZone = process.env['TZ']
+
+/** node 在给 process.env.TZ 赋值时就换本机时区，用它模拟电脑设成别的时区 */
+function useMachineTimeZone(zone: string): void {
+  process.env['TZ'] = zone
+}
+
+afterEach(() => {
+  if (originalTimeZone === undefined) delete process.env['TZ']
+  else process.env['TZ'] = originalTimeZone
+})
+
+describe('todayOf：按东八区，不跟本机时区', () => {
+  it('电脑在太平洋时区，美国晚上 8 点是中国的第二天', () => {
+    useMachineTimeZone('America/Los_Angeles')
+    const at = new Date('2026-10-17T20:28:05-07:00')
+    expect(at.getDate()).toBe(17)
+    expect(todayOf({ now: () => at })).toBe('2026-10-18')
+  })
+  it('东八区零点前一秒还是前一天', () => {
+    useMachineTimeZone('America/Los_Angeles')
+    expect(todayOf({ now: () => new Date('2026-10-17T23:59:59+08:00') })).toBe('2026-10-17')
+    expect(todayOf({ now: () => new Date('2026-10-18T00:00:00+08:00') })).toBe('2026-10-18')
+  })
+})
+
+describe('日历算术与本机时区无关', () => {
+  for (const zone of ['America/Los_Angeles', 'Asia/Shanghai', 'Pacific/Kiritimati']) {
+    it(zone, () => {
+      useMachineTimeZone(zone)
+      expect(addDays('2026-11-01', 1)).toBe('2026-11-02')
+      expect(addDays('2026-03-08', 1)).toBe('2026-03-09')
+      expect(daysBetween('2026-03-01', '2026-04-01')).toBe(31)
+      expect(weekdayOf('2026-10-12')).toBe(0)
+      expect(monthGrid('2026-10')[0]?.[0]).toBe('2026-09-28')
+    })
+  }
+})
 
 describe('dateOf', () => {
   it('认正常的一天', () => {

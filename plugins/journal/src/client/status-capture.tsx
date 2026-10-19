@@ -10,7 +10,7 @@ import { ButtonGroup } from '@/components/ui/button-group'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { CAPTURE_KINDS, type CaptureKind } from '../shared/capture.js'
-import { formatDay, isoOf } from '../shared/date.js'
+import { formatDay, systemClock, todayOf } from '../shared/date.js'
 import { CAPTURE_COMMAND } from '../shared/types.js'
 import { callData, errorText } from './calls.js'
 
@@ -37,7 +37,7 @@ function QuickCapture({ host }: { host: HostBridge }): ReactNode {
       setError('先写点内容')
       return
     }
-    const today = isoOf(new Date())
+    const today = todayOf(systemClock)
     try {
       await callData(host, CAPTURE_COMMAND, { date: today, kind, text })
       setDraft('')
